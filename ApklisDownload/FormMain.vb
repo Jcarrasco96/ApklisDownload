@@ -1,13 +1,9 @@
-﻿Imports Newtonsoft.Json
-Imports System.Net
-Imports System.IO
-Imports System.Text
+﻿Imports System.Net
 
 Public Class FormMain
 
     'Public Declare Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 
-    Private Const URL As String = "https://api.apklis.cu/v1/application/?package_name="
     Private URL_DOWNLOAD As String = ""
     Private FILENAME As String = ""
 
@@ -61,73 +57,43 @@ Public Class FormMain
 
         DisableAll()
 
-        ServicePointManager.SecurityProtocol = 3072
+        Dim apklisData = ApkData(txtPackage.Text.Trim)
 
-        Dim client As HttpWebRequest = CType(WebRequest.Create(URL & txtPackage.Text), HttpWebRequest)
+        If apklisData Is Nothing Then
+            btnDownload.Enabled = False
+            MsgBox("No existe esta aplicación.")
+            Exit Sub
+        End If
 
-        client.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0b; Windows NT 5.1)"
-        client.ContentType = "application/json; charset=utf-8"
-        client.Accept = "application/json"
-        client.Method = "GET"
+        If apklisData.results.Count = 0 Then
+            btnDownload.Enabled = False
+            MsgBox("No existe esta aplicación.")
+            Exit Sub
+        End If
 
-        Try
-            Dim response As HttpWebResponse = client.GetResponse
-            Dim sr As New StreamReader(response.GetResponseStream())
+        Dim first As Result = apklisData.results(0)
 
-            Dim html As New StringBuilder()
-            Dim buffer As Char()
-            Dim percentage = 0
+        Dim url = HttpUploadFile(first.sha256)
 
-            While sr.Peek() >= 0
-                ReDim buffer(1024)
+        If url Is Nothing Then
+            btnDownload.Enabled = False
+            MsgBox("No se ha podido obtener el enlace para descargar esta aplicación. Reintente de nuevo en un momento.")
+            Exit Sub
+        End If
 
-                sr.Read(buffer, 0, buffer.Length)
-                html.Append(buffer)
+        FILENAME = first.package_name & "-v" & first.version_code & ".apk"
+        URL_DOWNLOAD = URL.url
 
-                percentage = html.Length / response.ContentLength * 100
+        Debug.WriteLine(URL_DOWNLOAD)
 
-                If percentage > 100 Then
-                    percentage = 100
-                End If
+        picIcon.ImageLocation = first.icon
+        lblSize.Text = "Tamaño: " & first.size
 
-                bw.ReportProgress(percentage)
-            End While
-            bw.ReportProgress(100)
-
-            Dim json = JsonConvert.DeserializeObject(Of ApklisResponse)(html.ToString)
-
-            If json.results.Count <> 0 Then
-                Dim first As Result = json.results(0)
-
-                FILENAME = first.package_name & "-v" & first.last_release.version_code & ".apk"
-                URL_DOWNLOAD = "https://archive.apklis.cu/application/apk/" & FILENAME & "?key=" & first.last_release.direct_key
-
-                Debug.WriteLine(URL_DOWNLOAD)
-
-                picIcon.ImageLocation = first.last_release.icon
-                lblApp.Text = "Aplicación: " & first.name & " (" & first.package_name & ")"
-                lblDev.Text = "Desarrollador: " & first.developer.fullname & " (" & first.developer.email & ")"
-                lblPrice.Text = "Precio: " & first.price
-                Label1.Text = "Tamaño: " & ByteConv(first.last_release.size)
-                txtDesc.Text = first.description
-
-                If first.price = 0 Then
-                    MsgBox("Esta aplicación es gratis.")
-                End If
-
-                If URL_DOWNLOAD <> "" And FILENAME <> "" Then
-                    btnDownload.Enabled = True
-                Else
-                    btnDownload.Enabled = False
-                End If
-            Else
-                MsgBox("No existe esta aplicación.")
-            End If
-        Catch ex As Exception
-            URL_DOWNLOAD = ""
-            FILENAME = ""
-            MsgBox("Ocurrió un error al intentar recuperar la página web solicitada. Compruebe su conexión a Internet e inténtelo de nuevo.")
-        End Try
+        If URL_DOWNLOAD <> "" And FILENAME <> "" Then
+            btnDownload.Enabled = True
+        Else
+            btnDownload.Enabled = False
+        End If
     End Sub
 
     Private Sub bw_ProgressChanged(sender As Object, e As System.ComponentModel.ProgressChangedEventArgs) Handles bw.ProgressChanged
