@@ -89,7 +89,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ApklisData.vb" />
-    <Compile Include="Downloader.vb" />
+    <Compile Include="ApklisDataGeneral.vb" />
     <Compile Include="FormMain.vb">
       <SubType>Form</SubType>
     </Compile>
@@ -113,7 +113,6 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <Compile Include="FileIcon.vb" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="FormMain.resx">
